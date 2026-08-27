@@ -66,6 +66,42 @@ const getRoadColor = (road: any) => {
         minHeight: '500px'
       }}
     >
+      {/* MAP LEGEND */}
+<div
+  className="absolute bottom-5 right-5 z-[1000]
+             bg-zinc-950/90 backdrop-blur-md
+             border border-zinc-700/70
+             rounded-xl px-4 py-3
+             shadow-xl text-white"
+>
+  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-3">
+    Road Risk
+  </p>
+
+  <div className="space-y-2 text-[10px] font-bold">
+
+    <div className="flex items-center gap-2">
+      <span className="w-3 h-1.5 rounded-full bg-emerald-500" />
+      <span className="text-zinc-300">Low</span>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span className="w-3 h-1.5 rounded-full bg-amber-500" />
+      <span className="text-zinc-300">Medium</span>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span className="w-3 h-1.5 rounded-full bg-orange-500" />
+      <span className="text-zinc-300">High</span>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span className="w-3 h-1.5 rounded-full bg-red-500" />
+      <span className="text-zinc-300">Critical</span>
+    </div>
+
+  </div>
+</div>
 
       {/* MAP BACKGROUND */}
 
