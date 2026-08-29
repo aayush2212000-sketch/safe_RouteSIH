@@ -1,4 +1,4 @@
-# Safe Route SIH
+# Safe Route SIH //G.A.L.E.
 
 NER-SafeRoute is an intelligent logistics and road-risk monitoring dashboard for the North Eastern Region of India.
 
