@@ -1,91 +1,104 @@
-const API_URL = "http://localhost:8080";
+import { supabase } from './supabaseClient';
+import { aiService } from './aiService';
 
 export const apiService = {
 
-  // Real data from Spring Boot + MySQL
-  getRoads: async () => {
-    const response = await fetch(`${API_URL}/api/roads`);
+  // Fetch Live Alerts (Incidents) from Supabase
+  getAlerts: async () => {
+    const { data, error } = await supabase
+      .from('live_alerts')
+      .select('*')
+      .order('id', { ascending: false });
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch roads from backend");
+    if (error) {
+      console.error("Error fetching live alerts:", error.message);
+      return [];
     }
-
-    return response.json();
+    
+    // Parse GeoJSON coordinates
+    return data.map(alert => ({
+      ...alert,
+      coordinates: typeof alert.coordinates === 'string' 
+        ? JSON.parse(alert.coordinates).coordinates // PostgREST sometimes returns stringified GeoJSON
+        : alert.coordinates?.coordinates // If already parsed by Supabase JS [lng, lat]
+          ? { lat: alert.coordinates.coordinates[1], lng: alert.coordinates.coordinates[0] }
+          : null
+    }));
   },
 
-  // Keep these as mock data for now
+  submitAlert: async (report: any) => {
+    if (!report.coordinates) throw new Error("Coordinates required");
+    
+    // Insert using GeoJSON point
+    const { data, error } = await supabase
+      .from('live_alerts')
+      .insert([
+        {
+          type: report.type,
+          location: report.location,
+          severity: report.severity,
+          description: report.description,
+          status: 'Pending Verification',
+          time: new Date().toLocaleTimeString(),
+          coordinates: `SRID=4326;POINT(${report.coordinates.lng} ${report.coordinates.lat})` 
+        }
+      ])
+      .select();
+
+    if (error) {
+      console.error("Error submitting alert:", error.message);
+      throw error;
+    }
+    return data;
+  },
+
+  updateAlertStatus: async (id: number, status: string) => {
+    const { data, error } = await supabase
+      .from('live_alerts')
+      .update({ status })
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      console.error("Error updating alert:", error.message);
+      throw error;
+    }
+    return data;
+  },
+
+  // Fetch vehicles/logistics from Supabase
   getVehicles: async () => {
-    return [
-      {
-        id: "M-204",
-        cargo: "Medicines",
-        origin: "Guwahati",
-        dest: "Aizawl",
-        eta: "3h 42m",
-        risk: "HIGH"
-      },
-      {
-        id: "F-102",
-        cargo: "Food Grains",
-        origin: "Siliguri",
-        dest: "Gangtok",
-        eta: "1h 15m",
-        risk: "LOW"
-      }
-    ];
-  },
+    const { data, error } = await supabase
+      .from('tracking_routes')
+      .select('*');
 
-  getDistricts: async () => {
-    return [
-      {
-        id: "1",
-        name: "Aizawl",
-        connectivity: 61,
-        isolationRisk: 78,
-        status: "ORANGE",
-        pop: "84k"
-      },
-      {
-        id: "2",
-        name: "Tawang",
-        connectivity: 42,
-        isolationRisk: 91,
-        status: "RED",
-        pop: "49k"
-      },
-      {
-        id: "3",
-        name: "East Khasi Hills",
-        connectivity: 88,
-        isolationRisk: 12,
-        status: "GREEN",
-        pop: "825k"
-      }
-    ];
+    if (error) {
+      console.error("Error fetching vehicles:", error.message);
+      return [];
+    }
+    
+    return data;
   },
 
   getPredictions: async () => {
+    // Dynamically call Gemini API
+    const aiRoutes = await aiService.getAIRouteRisk("Aizawl Corridor", 120);
+
+    const alerts = aiRoutes.map((route: any, index: number) => ({
+      id: index + 1,
+      corridor: route.routeName,
+      prob: route.riskScore,
+      risk: route.status
+    }));
+
     return {
       nextHour: {
         highRisk: 17,
         moderate: 31,
         low: 284
       },
-
-      alerts: [
-        {
-          id: 1,
-          corridor: "Aizawl Corridor",
-          prob: 87,
-          risk: "Critical"
-        },
-        {
-          id: 2,
-          corridor: "Imphal-Ukhrul",
-          prob: 72,
-          risk: "High"
-        }
-      ]
+      alerts,
+      aiRoutes
     };
   }
 

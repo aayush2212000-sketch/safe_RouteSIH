@@ -1,5 +1,4 @@
 import React from 'react';
-import { incidentData } from "../data/incidentData";
 import {
   MapContainer,
   TileLayer,
@@ -11,28 +10,31 @@ import {
 
 import 'leaflet/dist/leaflet.css';
 
-import { roadData, vehicleData } from '../data/mockData';
-import { predictedRisks } from "../data/riskData";
+import { roadData } from '../data/mockData';
 import { getRiskExplanation } from "../utils/riskPrediction";
 
 interface MainMapProps {
   isDisaster: boolean;
   protocolActive: boolean;
   onRoadClick: (road: any) => void;
-  reports: any[];
+  reports?: any[];
   selectedRoute?: any;
+  aiPredictions?: any[];
+  vehicles?: any[];
 }
 
 export const MainMap: React.FC<MainMapProps> = ({
   isDisaster,
   protocolActive,
   onRoadClick,
-  reports,
-  selectedRoute
+  reports = [],
+  selectedRoute,
+  aiPredictions = [],
+  vehicles = []
 }) => {
   
 const getRoadColor = (road: any) => {
-  const predictedRoad = predictedRisks.find(
+  const predictedRoad = aiPredictions.find(
     (item) => item.road === road.id
   );
 
@@ -155,7 +157,7 @@ const getRoadColor = (road: any) => {
   <br />
   <br />
 
-  {predictedRisks
+  {aiPredictions
     .filter((item) => item.road === road.id)
     .map((item) => {
       const reasons = getRiskExplanation({
@@ -264,7 +266,7 @@ positions={
     INCIDENTS
    ========================= */}
 
-{incidentData.map((incident) => {
+{reports.map((incident) => {
 
   const incidentColor =
     incident.severity === "Critical"
@@ -343,13 +345,7 @@ positions={
     VEHICLES
    ========================= */}
 
-{vehicleData.map((vehicle) => {
-
-  // V-101 is rerouted through NH-44 during disaster mode
-  const vehiclePosition =
-    isDisaster && vehicle.id === 'V-101'
-      ? [25.57, 91.88]
-      : vehicle.location;
+{vehicles.map((vehicle) => {
 
   return (
      <Marker

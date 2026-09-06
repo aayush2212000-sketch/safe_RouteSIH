@@ -9,13 +9,16 @@ import { AIActionRecommendation } from './AIActionRecommendation';
 import { DemoControls } from './DemoControls';
 import { LiveLogistics } from './LiveLogistics';
 import RiskPrediction from "./RiskPrediction";
-import CitizenReport from "./CitizenReport";
+
 import IncidentFeed from "./IncidentFeed";
 import ReportsPage from "./ReportsPage";
 import RoutePlanner from "./RoutePlanner";
 import { roadData } from '../data/mockData';
+import { useGaleData } from '../hooks/useGaleData';
+import { apiService } from '../services/apiService';
 
 export const CommandCenter: React.FC = () => {
+  const { alerts, vehicles, predictions, loading, refetch } = useGaleData();
 
   // Disaster mode
   const [isDisasterMode, setIsDisasterMode] = useState(false);
@@ -24,20 +27,17 @@ export const CommandCenter: React.FC = () => {
   // Search
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [reports, setReports] = useState<any[]>([]);
-
-  const handleReportSubmit = (report: any) => {
-    setReports((prev) => [report, ...prev]);
+  const handleReportSubmit = () => {
+    // handled in CitizenReport
   };
 
-  const handleStatusChange = (id: number, status: string) => {
-    setReports((prev) =>
-      prev.map((report) =>
-        report.id === id
-          ? { ...report, status }
-          : report
-      )
-    );
+  const handleStatusChange = async (id: number, status: string) => {
+    try {
+      await apiService.updateAlertStatus(id, status);
+      refetch();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Selected road
@@ -166,7 +166,7 @@ export const CommandCenter: React.FC = () => {
         {activePage === 'Reports' ? (
 
           <ReportsPage
-            reports={reports}
+            reports={alerts}
             onReportSubmit={handleReportSubmit}
             onStatusChange={handleStatusChange}
           />
@@ -188,14 +188,17 @@ export const CommandCenter: React.FC = () => {
               {/* MAP */}
 
               <div className="h-[520px] flex-shrink-0 bg-zinc-900/50 border border-zinc-800 rounded-xl relative overflow-hidden">
-
+                {loading ? <div className="flex h-full w-full items-center justify-center text-zinc-500">Loading Map...</div> : (
                 <MainMap
                   isDisaster={isDisasterMode}
                   protocolActive={protocolActive}
                   onRoadClick={setSelectedRoad}
-                  reports={reports}
+                  reports={alerts}
                   selectedRoute={selectedRoute}
+                  aiPredictions={predictions?.aiRoutes} // Assuming MainMap takes this if we pass it, though it imports directly currently. We should modify MainMap to accept vehicles and predictions
+                  vehicles={vehicles}
                 />
+                )}
 
                 {/* DISASTER MODE BUTTON */}
 
@@ -219,12 +222,13 @@ export const CommandCenter: React.FC = () => {
             <div className="col-span-3 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
 
               <IncidentFeed
-                reports={reports}
+                reports={alerts}
                 onStatusChange={handleStatusChange}
               />
 
               <LiveLogistics
                 protocolActive={protocolActive}
+                vehicles={vehicles}
               />
 
               <RiskPrediction />

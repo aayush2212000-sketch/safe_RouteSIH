@@ -10,13 +10,15 @@ import {
 
 interface LiveLogisticsProps {
   protocolActive: boolean;
+  vehicles?: any[];
 }
 
 export const LiveLogistics: React.FC<LiveLogisticsProps> = ({
-  protocolActive
+  protocolActive,
+  vehicles = []
 }) => {
 
-  const vehicles = [
+  const defaultVehicles = [
     {
       id: 'V-101',
       cargo: 'Vaccines',
@@ -65,6 +67,8 @@ export const LiveLogistics: React.FC<LiveLogisticsProps> = ({
     }
   ];
 
+  const displayVehicles = vehicles && vehicles.length > 0 ? vehicles : defaultVehicles;
+  
   return (
     <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl">
 
@@ -90,7 +94,7 @@ export const LiveLogistics: React.FC<LiveLogisticsProps> = ({
 
       <div className="space-y-3">
 
-        {vehicles.map((vehicle) => {
+        {displayVehicles.map((vehicle: any) => {
 
           const Icon = vehicle.Icon;
 
