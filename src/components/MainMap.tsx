@@ -1,4 +1,5 @@
 import React from "react";
+import * as L from "leaflet";
 import {
   MapContainer,
   TileLayer,
@@ -102,7 +103,27 @@ const vehicleLocations: Record<string, [number, number]> = {
   "V-104": [24.817, 93.9368],
   "V-105": [23.7271, 92.7176],
 };
-
+const vehicleIcon = L.divIcon({
+  className: "",
+  html: `
+    <div style="
+      width: 38px;
+      height: 38px;
+      background: #22c55e;
+      border: 3px solid white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 15px rgba(34,197,94,0.9);
+    ">
+      🚚
+    </div>
+  `,
+  iconSize: [38, 38],
+  iconAnchor: [19, 19],
+});
 export const MainMap: React.FC<MainMapProps> = ({
   isDisaster,
   protocolActive,
@@ -416,54 +437,75 @@ export const MainMap: React.FC<MainMapProps> = ({
         />
       )}
 
-      {/* =========================
-          VEHICLES
-      ========================= */}
+     {/* =========================
+    VEHICLES
+========================= */}
 
-      {vehicles.map((vehicle) => {
-        const vehiclePosition =
-          getCoordinates(vehicle.location) ||
-          vehicleLocations[vehicle.id];
+{vehicles.map((vehicle, index) => {
+  console.log("VEHICLE FROM DATABASE:", vehicle);
 
-        if (!vehiclePosition) return null;
+  const vehicleId = String(
+    vehicle.id ??
+      vehicle.vehicle_id ??
+      vehicle.vehicleId ??
+      `V-${101 + index}`
+  );
 
-        return (
-          <Marker
-            key={`vehicle-${vehicle.id}`}
-            position={
-              protocolActive && vehicle.id === "V-101"
-                ? [25.57, 91.88]
-                : vehiclePosition
-            }
-          >
-            <Popup>
-              <strong>🚚 {vehicle.id}</strong>
+  // Try every possible location field
+  const vehiclePosition =
+    getCoordinates(vehicle.location) ||
+    getCoordinates(vehicle.coordinates) ||
+    getCoordinates(vehicle.current_location) ||
+    getCoordinates(vehicle.currentLocation) ||
+    (vehicle.latitude != null && vehicle.longitude != null
+      ? [Number(vehicle.latitude), Number(vehicle.longitude)] as [number, number]
+      : null) ||
+    vehicleLocations[vehicleId] ||
+    vehicleLocations[`V-${101 + index}`];
 
-              <br />
+  console.log("VEHICLE ID:", vehicleId);
+  console.log("VEHICLE POSITION:", vehiclePosition);
 
-              Cargo: {vehicle.cargo}
+  if (!vehiclePosition) {
+    console.warn("NO POSITION FOR VEHICLE:", vehicle);
+    return null;
+  }
 
-              <br />
+  const displayPosition =
+    protocolActive && vehicleId === "V-101"
+      ? ([25.57, 91.88] as [number, number])
+      : vehiclePosition;
 
-              Status:{" "}
-              {protocolActive && vehicle.id === "V-101"
-                ? "🔄 REROUTED"
-                : vehicle.status}
+  return (
+    <Marker
+      key={`vehicle-${vehicleId}-${index}`}
+      position={displayPosition}
+      icon={vehicleIcon}
+    >
+      <Popup>
+        <strong>🚚 {vehicleId}</strong>
+        <br />
+        Cargo: {vehicle.cargo ?? "N/A"}
+        <br />
+        Status:
+        {" "}
+        {protocolActive && vehicleId === "V-101"
+          ? "🔄 REROUTED"
+          : vehicle.status ?? "Unknown"}
 
-              <br />
-
-              {protocolActive && vehicle.id === "V-101" && (
-                <>
-                  <br />
-                  🤖 AI Route: NH-44
-                  <br />
-                  ⚡ Priority: HIGH
-                </>
-              )}
-            </Popup>
-          </Marker>
-        );
-      })}
+        {protocolActive && vehicleId === "V-101" && (
+          <>
+            <br />
+            <br />
+            🤖 AI Route: NH-44
+            <br />
+            ⚡ Priority: HIGH
+          </>
+        )}
+      </Popup>
+    </Marker>
+  );
+})}
 
       {/* =========================
           CITIZEN INCIDENT MARKERS

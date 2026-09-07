@@ -1,3 +1,5 @@
+
+import FleetVehiclesPage from './pages/FleetVehiclesPage';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from './pages/Login';
 import { CommandCenter } from './components/CommandCenter';
@@ -11,6 +13,10 @@ function App() {
 
     <BrowserRouter>
       <Routes>
+        <Route
+  path="/fleet-vehicles"
+  element={<FleetVehiclesPage />}
+/>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
         

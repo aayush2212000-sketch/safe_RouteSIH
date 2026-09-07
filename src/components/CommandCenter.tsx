@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
 import { KPISection } from './KPISection';
-import { MainMap } from './MainMap';
+import { MainMap }  from './MainMap';
 import { AIPredictionPanel } from './AIPredictionPanel';
 import { AIActionRecommendation } from './AIActionRecommendation';
 import { DemoControls } from './DemoControls';
@@ -18,6 +18,7 @@ import { useGaleData } from '../hooks/useGaleData';
 import { apiService } from '../services/apiService';
 
 export const CommandCenter: React.FC = () => {
+  console.log("🔥 COMMAND CENTER IS RUNNING");
   const { alerts, vehicles, predictions, loading, refetch } = useGaleData();
 
   // Disaster mode
