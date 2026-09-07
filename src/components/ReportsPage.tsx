@@ -4,12 +4,13 @@ import IncidentFeed from "./IncidentFeed";
 
 interface ReportsPageProps {
   reports: any[];
-  onReportSubmit?: () => void;
+  onReportSubmit: (report: any) => void;
   onStatusChange: (id: number, status: string) => void;
 }
 
 const ReportsPage: React.FC<ReportsPageProps> = ({
   reports,
+  onReportSubmit,
   onStatusChange,
 }) => {
   return (
@@ -34,10 +35,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({
       {/* CONTENT */}
       <div className="grid grid-cols-2 gap-6">
 
-        {/* NEW REPORT FORM */}
-        <div className="lg:col-span-1">
-          <CitizenReport />
-        </div>
+        {/* REPORT FORM */}
+        <CitizenReport
+          onReportSubmit={onReportSubmit}
+        />
 
         {/* LIVE FEED */}
         <IncidentFeed

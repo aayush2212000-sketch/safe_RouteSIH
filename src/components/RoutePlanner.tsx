@@ -9,18 +9,12 @@ const locations: Record<string, [number, number]> = {
   Aizawl: [23.7271, 92.7176],
 };
 
-interface RoutePlannerProps {
-  onRouteFound?: (route: any) => void;
-}
-
-const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
+const RoutePlanner: React.FC = () => {
   const [source, setSource] = useState("");
   const [destination, setDestination] = useState("");
   const [routeFound, setRouteFound] = useState(false);
-  // State to hold the found route details for display
-  const [routeDetails, setRouteDetails] = useState<any>(null);
 
-  const findRoute = async () => {
+  const findRoute = () => {
     if (!source || !destination) {
       alert("Please select source and destination.");
       return;
@@ -31,45 +25,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
       return;
     }
 
-    setRouteFound(false);
-    
-    try {
-      const srcCoord = locations[source];
-      const dstCoord = locations[destination];
-      
-      // OSRM expects longitude,latitude
-      const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${srcCoord[1]},${srcCoord[0]};${dstCoord[1]},${dstCoord[0]}?overview=full&geometries=geojson`);
-      const data = await response.json();
-      
-      if (data.code === "Ok" && data.routes.length > 0) {
-        // OSRM returns coordinates as [lon, lat], Leaflet Polyline expects [lat, lon]
-        const routeCoords = data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
-        const distKm = Math.round(data.routes[0].distance / 1000);
-        const timeHrs = Math.floor(data.routes[0].duration / 3600);
-        const timeMins = Math.round((data.routes[0].duration % 3600) / 60);
-        
-        const calculatedRoute = {
-          source,
-          destination,
-          routeName: `NH-${Math.floor(Math.random() * 50) + 10}`,
-          distance: `${distKm} km`,
-          time: `${timeHrs > 0 ? timeHrs + 'h ' : ''}${timeMins}m`,
-          safetyScore: Math.floor(Math.random() * 20) + 75,
-          coordinates: routeCoords
-        };
-        
-        setRouteDetails(calculatedRoute);
-        setRouteFound(true);
-        if (onRouteFound) {
-          onRouteFound(calculatedRoute);
-        }
-      } else {
-        alert("Could not find a route between these locations.");
-      }
-    } catch (err) {
-      console.error("Routing error:", err);
-      alert("Failed to calculate route. Please try again.");
-    }
+    setRouteFound(true);
   };
 
   return (
@@ -156,7 +112,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
 
       {/* RESULT */}
 
-      {routeFound && routeDetails && (
+      {routeFound && (
         <div className="mt-4 bg-zinc-950 border border-green-500/30 rounded-lg p-4">
 
           <div className="flex justify-between items-center">
@@ -167,7 +123,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
               </p>
 
               <p className="text-white font-bold mt-1">
-                {routeDetails.source} → {routeDetails.destination}
+                {source} → {destination}
               </p>
             </div>
 
@@ -193,7 +149,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
                 Distance
               </p>
               <p className="text-white font-bold">
-                {routeDetails.distance}
+                184 km
               </p>
             </div>
 
@@ -202,7 +158,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
                 ETA
               </p>
               <p className="text-white font-bold">
-                {routeDetails.time}
+                4h 20m
               </p>
             </div>
 
