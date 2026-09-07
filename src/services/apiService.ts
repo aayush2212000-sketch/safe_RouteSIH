@@ -1,35 +1,69 @@
 import { supabase } from './supabaseClient';
-import { aiService } from './aiService';
 
 export const apiService = {
 
-  // Fetch Live Alerts (Incidents) from Supabase
+  // =========================================================
+  // FETCH LIVE ALERTS FROM SUPABASE
+  // =========================================================
   getAlerts: async () => {
+    console.log("GET ALERTS: starting...");
+
     const { data, error } = await supabase
       .from('live_alerts')
       .select('*')
       .order('id', { ascending: false });
 
     if (error) {
-      console.error("Error fetching live alerts:", error.message);
+      console.error("GET ALERTS ERROR:", error);
       return [];
     }
-    
-    // Parse GeoJSON coordinates
-    return data.map(alert => ({
-      ...alert,
-      coordinates: typeof alert.coordinates === 'string' 
-        ? JSON.parse(alert.coordinates).coordinates // PostgREST sometimes returns stringified GeoJSON
-        : alert.coordinates?.coordinates // If already parsed by Supabase JS [lng, lat]
-          ? { lat: alert.coordinates.coordinates[1], lng: alert.coordinates.coordinates[0] }
-          : null
-    }));
+
+    console.log("GET ALERTS RAW DATA:", data);
+
+    return (data || []).map((alert: any) => {
+      let coordinates = null;
+
+      try {
+        if (typeof alert.coordinates === 'string') {
+          const parsed = JSON.parse(alert.coordinates);
+
+          if (parsed?.coordinates) {
+            coordinates = {
+              lat: parsed.coordinates[1],
+              lng: parsed.coordinates[0],
+            };
+          }
+        } else if (alert.coordinates?.coordinates) {
+          coordinates = {
+            lat: alert.coordinates.coordinates[1],
+            lng: alert.coordinates.coordinates[0],
+          };
+        }
+      } catch (error) {
+        console.error(
+          "COORDINATE PARSE ERROR:",
+          error,
+          alert.coordinates
+        );
+      }
+
+      return {
+        ...alert,
+        coordinates,
+      };
+    });
   },
 
+
+  // =========================================================
+  // SUBMIT CITIZEN ALERT
+  // =========================================================
   submitAlert: async (report: any) => {
-    if (!report.coordinates) throw new Error("Coordinates required");
-    
-    // Insert using GeoJSON point
+
+    if (!report.coordinates) {
+      throw new Error("Coordinates required");
+    }
+
     const { data, error } = await supabase
       .from('live_alerts')
       .insert([
@@ -40,19 +74,33 @@ export const apiService = {
           description: report.description,
           status: 'Pending Verification',
           time: new Date().toLocaleTimeString(),
-          coordinates: `SRID=4326;POINT(${report.coordinates.lng} ${report.coordinates.lat})` 
+          coordinates:
+            `SRID=4326;POINT(${report.coordinates.lng} ${report.coordinates.lat})`
         }
       ])
       .select();
 
     if (error) {
-      console.error("Error submitting alert:", error.message);
+      console.error(
+        "ERROR SUBMITTING ALERT:",
+        error
+      );
+
       throw error;
     }
+
     return data;
   },
 
-  updateAlertStatus: async (id: number, status: string) => {
+
+  // =========================================================
+  // UPDATE ALERT STATUS
+  // =========================================================
+  updateAlertStatus: async (
+    id: number,
+    status: string
+  ) => {
+
     const { data, error } = await supabase
       .from('live_alerts')
       .update({ status })
@@ -60,36 +108,60 @@ export const apiService = {
       .select();
 
     if (error) {
-      console.error("Error updating alert:", error.message);
+      console.error(
+        "ERROR UPDATING ALERT:",
+        error
+      );
+
       throw error;
     }
+
     return data;
   },
 
-  // Fetch vehicles/logistics from Supabase
+
+  // =========================================================
+  // FETCH VEHICLES / LOGISTICS
+  // =========================================================
   getVehicles: async () => {
+
+    console.log("GET VEHICLES: starting...");
+
     const { data, error } = await supabase
       .from('tracking_routes')
       .select('*');
 
     if (error) {
-      console.error("Error fetching vehicles:", error.message);
+      console.error(
+        "GET VEHICLES ERROR:",
+        error
+      );
+
       return [];
     }
-    
-    return data;
+
+    console.log(
+      "GET VEHICLES RAW DATA:",
+      data
+    );
+
+    return data || [];
   },
 
-  getPredictions: async () => {
-    // Dynamically call Gemini API
-    const aiRoutes = await aiService.getAIRouteRisk("Aizawl Corridor", 120);
 
-    const alerts = aiRoutes.map((route: any, index: number) => ({
-      id: index + 1,
-      corridor: route.routeName,
-      prob: route.riskScore,
-      risk: route.status
-    }));
+  // =========================================================
+  // GEMINI TEMPORARILY DISABLED
+  // =========================================================
+  // We are disabling Gemini temporarily because the API
+  // is returning HTTP 429 (rate limit / quota).
+  //
+  // This DOES NOT affect Supabase/database data.
+  // =========================================================
+  getPredictions: async () => {
+
+    console.log(
+      "GEMINI DISABLED FOR TESTING"
+    );
 
     return {
       nextHour: {
@@ -97,8 +169,10 @@ export const apiService = {
         moderate: 31,
         low: 284
       },
-      alerts,
-      aiRoutes
+
+      alerts: [],
+
+      aiRoutes: []
     };
   }
 

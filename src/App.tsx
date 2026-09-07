@@ -5,7 +5,10 @@ import { UserMap } from './pages/UserMap';
 import { ModeratorFeed } from './pages/ModeratorFeed';
 
 function App() {
+  console.log("🔥 APP LOADED");
+
   return (
+
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />

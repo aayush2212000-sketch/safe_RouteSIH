@@ -4,8 +4,8 @@ import {
   MapPin,
   Package,
   Wifi,
-  WifiOff,
-  Signal
+  Signal,
+  WifiOff
 } from 'lucide-react';
 
 interface LiveLogisticsProps {
@@ -18,6 +18,7 @@ export const LiveLogistics: React.FC<LiveLogisticsProps> = ({
   vehicles = []
 }) => {
 
+  // Fallback data used only when the database has no vehicles
   const defaultVehicles = [
     {
       id: 'V-101',
@@ -25,58 +26,37 @@ export const LiveLogistics: React.FC<LiveLogisticsProps> = ({
       route: protocolActive
         ? 'Guwahati → NH-44 → Aizawl'
         : 'Guwahati → Aizawl',
-
-      status: protocolActive ? 'REROUTED' : 'MOVING',
-
-      statusColor: protocolActive
-        ? 'text-blue-400'
-        : 'text-emerald-400',
-
-      connection: 'ONLINE',
-      connectionColor: 'text-emerald-400',
-      lastUpdate: '1 min ago',
-      Icon: Truck
+      status: protocolActive ? 'REROUTED' : 'MOVING'
     },
-
     {
       id: 'V-102',
       cargo: 'Food Grains',
       route: 'Siliguri → Gangtok',
-
-      status: 'MOVING',
-      statusColor: 'text-emerald-400',
-
-      connection: 'WEAK SIGNAL',
-      connectionColor: 'text-amber-400',
-      lastUpdate: '6 min ago',
-      Icon: Package
+      status: 'MOVING'
     },
-
     {
       id: 'V-103',
       cargo: 'Oxygen Tankers',
       route: 'Silchar → Imphal',
-
-      status: 'STOPPED',
-      statusColor: 'text-red-400',
-
-      connection: 'OFFLINE',
-      connectionColor: 'text-red-400',
-      lastUpdate: '18 min ago',
-      Icon: Truck
+      status: 'STOPPED'
     }
   ];
 
-  const displayVehicles = vehicles && vehicles.length > 0 ? vehicles : defaultVehicles;
-  
+  const displayVehicles =
+    vehicles && vehicles.length > 0
+      ? vehicles
+      : defaultVehicles;
+
   return (
     <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl">
 
       {/* HEADER */}
-
       <div className="flex items-center gap-2 mb-5">
 
-        <Truck size={17} className="text-blue-400" />
+        <Truck
+          size={17}
+          className="text-blue-400"
+        />
 
         <h2 className="text-xs font-black uppercase tracking-widest text-zinc-200">
           Live Logistics
@@ -91,48 +71,65 @@ export const LiveLogistics: React.FC<LiveLogisticsProps> = ({
 
 
       {/* VEHICLES */}
-
       <div className="space-y-3">
 
-        {displayVehicles.map((vehicle: any) => {
+        {displayVehicles.map((vehicle: any, index: number) => {
 
-          const Icon = vehicle.Icon;
+          const status =
+            String(vehicle.status || 'UNKNOWN').toUpperCase();
+
+          const isMoving =
+            status.includes('MOVING') ||
+            status.includes('TRANSIT') ||
+            status.includes('ACTIVE') ||
+            status.includes('REROUTED');
+
+          const isStopped =
+            status.includes('STOP') ||
+            status.includes('BLOCK');
+
+          const statusColor = isMoving
+            ? 'text-emerald-400'
+            : isStopped
+              ? 'text-red-400'
+              : 'text-amber-400';
+
+          const VehicleIcon =
+            index % 2 === 0 ? Truck : Package;
 
           return (
 
             <div
-              key={vehicle.id}
+              key={vehicle.id || index}
               className="bg-zinc-950 border border-zinc-800 rounded-lg p-3"
             >
 
               {/* TOP ROW */}
-
               <div className="flex items-center justify-between">
 
                 <div className="flex items-center gap-2">
 
-                  <Icon
+                  <VehicleIcon
                     size={15}
                     className="text-zinc-500"
                   />
 
                   <span className="text-sm font-black text-white">
-                    {vehicle.id}
+                    {vehicle.id || 'Unknown Vehicle'}
                   </span>
 
                 </div>
 
                 <span
-                  className={`text-[9px] font-black ${vehicle.statusColor}`}
+                  className={`text-[9px] font-black ${statusColor}`}
                 >
-                  {vehicle.status}
+                  {status}
                 </span>
 
               </div>
 
 
               {/* CARGO */}
-
               <div className="mt-2 flex items-center gap-2">
 
                 <Package
@@ -141,14 +138,13 @@ export const LiveLogistics: React.FC<LiveLogisticsProps> = ({
                 />
 
                 <span className="text-[10px] text-zinc-400">
-                  {vehicle.cargo}
+                  {vehicle.cargo || 'Cargo information unavailable'}
                 </span>
 
               </div>
 
 
               {/* ROUTE */}
-
               <div className="mt-2 flex items-center gap-2">
 
                 <MapPin
@@ -157,68 +153,33 @@ export const LiveLogistics: React.FC<LiveLogisticsProps> = ({
                 />
 
                 <span className="text-[10px] text-zinc-500">
-                  {vehicle.route}
+                  {vehicle.route || 'Route tracking active'}
                 </span>
 
               </div>
 
 
               {/* CONNECTIVITY */}
-
               <div className="mt-3 pt-2 border-t border-zinc-800 flex items-center justify-between">
 
                 <div className="flex items-center gap-2">
 
-                  {vehicle.connection === 'ONLINE' && (
-                    <Wifi
-                      size={12}
-                      className="text-emerald-400"
-                    />
-                  )}
+                  <Wifi
+                    size={12}
+                    className="text-emerald-400"
+                  />
 
-                  {vehicle.connection === 'WEAK SIGNAL' && (
-                    <Signal
-                      size={12}
-                      className="text-amber-400"
-                    />
-                  )}
-
-                  {vehicle.connection === 'OFFLINE' && (
-                    <WifiOff
-                      size={12}
-                      className="text-red-400"
-                    />
-                  )}
-
-                  <span
-                    className={`text-[9px] font-black uppercase ${vehicle.connectionColor}`}
-                  >
-                    {vehicle.connection}
+                  <span className="text-[9px] font-black uppercase text-emerald-400">
+                    ONLINE
                   </span>
 
                 </div>
 
-
                 <span className="text-[9px] text-zinc-600">
-                  Updated {vehicle.lastUpdate}
+                  Live tracking
                 </span>
 
               </div>
-
-
-              {/* OFFLINE WARNING */}
-
-              {vehicle.connection === 'OFFLINE' && (
-
-                <div className="mt-2 px-2 py-1.5 rounded bg-red-500/5 border border-red-500/10">
-
-                  <p className="text-[9px] text-red-400 font-bold">
-                    ⚠ Location may be outdated
-                  </p>
-
-                </div>
-
-              )}
 
             </div>
 
@@ -230,7 +191,6 @@ export const LiveLogistics: React.FC<LiveLogisticsProps> = ({
 
 
       {/* FOOTER */}
-
       <div className="mt-4 pt-3 border-t border-zinc-800">
 
         <div className="flex items-center justify-between">
@@ -240,7 +200,7 @@ export const LiveLogistics: React.FC<LiveLogisticsProps> = ({
           </span>
 
           <span className="text-[9px] text-zinc-500">
-            1 Offline • 1 Weak
+            {displayVehicles.length} Active
           </span>
 
         </div>

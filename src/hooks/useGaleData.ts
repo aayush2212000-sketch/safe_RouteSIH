@@ -11,17 +11,39 @@ export const useGaleData = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [fetchedAlerts, fetchedVehicles, fetchedPredictions] = await Promise.all([
+
+      // Load database data first.
+      // These should work even if Gemini fails.
+      const [fetchedAlerts, fetchedVehicles] = await Promise.all([
         apiService.getAlerts(),
         apiService.getVehicles(),
-        apiService.getPredictions()
       ]);
 
-      setAlerts(fetchedAlerts);
-      setVehicles(fetchedVehicles);
-      setPredictions(fetchedPredictions);
+      console.log('ALERTS:', fetchedAlerts);
+      console.log('VEHICLES:', fetchedVehicles);
+
+      setAlerts(fetchedAlerts || []);
+      setVehicles(fetchedVehicles || []);
+
+      // Gemini predictions are optional.
+      // A Gemini error should NOT prevent the map/database data from loading.
+      try {
+        const fetchedPredictions = await apiService.getPredictions();
+
+        console.log('AI PREDICTIONS:', fetchedPredictions);
+
+        setPredictions(fetchedPredictions);
+      } catch (error) {
+        console.error('Gemini prediction failed:', error);
+        setPredictions(null);
+      }
+
     } catch (err) {
-      console.error("Error fetching GALE data:", err);
+      console.error('Error fetching GALE data:', err);
+
+      // Keep the UI usable even if one database request fails.
+      setAlerts([]);
+      setVehicles([]);
     } finally {
       setLoading(false);
     }
@@ -30,14 +52,23 @@ export const useGaleData = () => {
   useEffect(() => {
     fetchData();
 
-    // Set up realtime subscriptions for live_alerts
+    // Realtime updates for live alerts
     const alertSubscription = supabase
       .channel('public:live_alerts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_alerts' }, payload => {
-        console.log('Realtime Alert update!', payload);
-        // Refresh everything (or we could optimistically update)
-        fetchData(); 
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'live_alerts',
+        },
+        (payload) => {
+          console.log('Realtime Alert update!', payload);
+
+          // Refresh database data
+          fetchData();
+        }
+      )
       .subscribe();
 
     return () => {
@@ -45,5 +76,11 @@ export const useGaleData = () => {
     };
   }, []);
 
-  return { alerts, vehicles, predictions, loading, refetch: fetchData };
+  return {
+    alerts,
+    vehicles,
+    predictions,
+    loading,
+    refetch: fetchData,
+  };
 };
