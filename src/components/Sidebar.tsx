@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <span className="font-black text-xl tracking-tighter text-white">
-          NER-SafeRoute
+          G.A.L.E
         </span>
       </div>
 

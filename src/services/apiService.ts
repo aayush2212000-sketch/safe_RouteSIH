@@ -1,70 +1,168 @@
-const API_URL = "http://localhost:8080";
+import { supabase } from './supabaseClient';
 
 export const apiService = {
 
-  // Real data from Spring Boot + MySQL
-  getRoads: async () => {
-    const response = await fetch(`${API_URL}/api/roads`);
+  // =========================================================
+  // FETCH LIVE ALERTS FROM SUPABASE
+  // =========================================================
+  getAlerts: async () => {
+    console.log("GET ALERTS: starting...");
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch roads from backend");
+    const { data, error } = await supabase
+      .from('live_alerts')
+      .select('*')
+      .order('id', { ascending: false });
+
+    if (error) {
+      console.error("GET ALERTS ERROR:", error);
+      return [];
     }
 
-    return response.json();
+    console.log("GET ALERTS RAW DATA:", data);
+
+    return (data || []).map((alert: any) => {
+      let coordinates = null;
+
+      try {
+        if (typeof alert.coordinates === 'string') {
+          const parsed = JSON.parse(alert.coordinates);
+
+          if (parsed?.coordinates) {
+            coordinates = {
+              lat: parsed.coordinates[1],
+              lng: parsed.coordinates[0],
+            };
+          }
+        } else if (alert.coordinates?.coordinates) {
+          coordinates = {
+            lat: alert.coordinates.coordinates[1],
+            lng: alert.coordinates.coordinates[0],
+          };
+        }
+      } catch (error) {
+        console.error(
+          "COORDINATE PARSE ERROR:",
+          error,
+          alert.coordinates
+        );
+      }
+
+      return {
+        ...alert,
+        coordinates,
+      };
+    });
   },
 
-  // Keep these as mock data for now
+
+  // =========================================================
+  // SUBMIT CITIZEN ALERT
+  // =========================================================
+  submitAlert: async (report: any) => {
+
+    if (!report.coordinates) {
+      throw new Error("Coordinates required");
+    }
+
+    const { data, error } = await supabase
+      .from('live_alerts')
+      .insert([
+        {
+          type: report.type,
+          location: report.location,
+          severity: report.severity,
+          description: report.description,
+          status: 'Pending Verification',
+          time: new Date().toLocaleTimeString(),
+          coordinates:
+            `SRID=4326;POINT(${report.coordinates.lng} ${report.coordinates.lat})`
+        }
+      ])
+      .select();
+
+    if (error) {
+      console.error(
+        "ERROR SUBMITTING ALERT:",
+        error
+      );
+
+      throw error;
+    }
+
+    return data;
+  },
+
+
+  // =========================================================
+  // UPDATE ALERT STATUS
+  // =========================================================
+  updateAlertStatus: async (
+    id: number,
+    status: string
+  ) => {
+
+    const { data, error } = await supabase
+      .from('live_alerts')
+      .update({ status })
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      console.error(
+        "ERROR UPDATING ALERT:",
+        error
+      );
+
+      throw error;
+    }
+
+    return data;
+  },
+
+
+  // =========================================================
+  // FETCH VEHICLES / LOGISTICS
+  // =========================================================
   getVehicles: async () => {
-    return [
-      {
-        id: "M-204",
-        cargo: "Medicines",
-        origin: "Guwahati",
-        dest: "Aizawl",
-        eta: "3h 42m",
-        risk: "HIGH"
-      },
-      {
-        id: "F-102",
-        cargo: "Food Grains",
-        origin: "Siliguri",
-        dest: "Gangtok",
-        eta: "1h 15m",
-        risk: "LOW"
-      }
-    ];
+
+    console.log("GET VEHICLES: starting...");
+
+    const { data, error } = await supabase
+      .from('tracking_routes')
+      .select('*');
+
+    if (error) {
+      console.error(
+        "GET VEHICLES ERROR:",
+        error
+      );
+
+      return [];
+    }
+
+    console.log(
+      "GET VEHICLES RAW DATA:",
+      data
+    );
+
+    return data || [];
   },
 
-  getDistricts: async () => {
-    return [
-      {
-        id: "1",
-        name: "Aizawl",
-        connectivity: 61,
-        isolationRisk: 78,
-        status: "ORANGE",
-        pop: "84k"
-      },
-      {
-        id: "2",
-        name: "Tawang",
-        connectivity: 42,
-        isolationRisk: 91,
-        status: "RED",
-        pop: "49k"
-      },
-      {
-        id: "3",
-        name: "East Khasi Hills",
-        connectivity: 88,
-        isolationRisk: 12,
-        status: "GREEN",
-        pop: "825k"
-      }
-    ];
-  },
 
+  // =========================================================
+  // GEMINI TEMPORARILY DISABLED
+  // =========================================================
+  // We are disabling Gemini temporarily because the API
+  // is returning HTTP 429 (rate limit / quota).
+  //
+  // This DOES NOT affect Supabase/database data.
+  // =========================================================
   getPredictions: async () => {
+
+    console.log(
+      "GEMINI DISABLED FOR TESTING"
+    );
+
     return {
       nextHour: {
         highRisk: 17,
@@ -72,20 +170,9 @@ export const apiService = {
         low: 284
       },
 
-      alerts: [
-        {
-          id: 1,
-          corridor: "Aizawl Corridor",
-          prob: 87,
-          risk: "Critical"
-        },
-        {
-          id: 2,
-          corridor: "Imphal-Ukhrul",
-          prob: 72,
-          risk: "High"
-        }
-      ]
+      alerts: [],
+
+      aiRoutes: []
     };
   }
 
