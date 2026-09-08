@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { apiService } from "../services/apiService";
 
 interface Report {
   id: number;
@@ -16,11 +17,12 @@ interface Report {
 }
 
 interface CitizenReportProps {
-  onReportSubmit: (report: Report) => void;
+  onLocationCapture?: (loc: { lat: number; lng: number }) => void;
+  onReportSubmit?: (report: Report) => void;
 }
 
 const CitizenReport: React.FC<CitizenReportProps> = ({
-  onReportSubmit,
+  onLocationCapture: _onLocationCapture
 }) => {
   const [type, setType] = useState("Landslide");
   const [location, setLocation] = useState("");
@@ -63,32 +65,40 @@ const getMyLocation = () => {
   );
 };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!location.trim() || !description.trim()) {
       alert("Please enter location and description.");
       return;
     }
+    
+    if (!coordinates) {
+      alert("Please capture GPS location before submitting.");
+      return;
+    }
 
-   const newReport: Report = {
-  id: Date.now(),
-  type,
-  location,
-  severity,
-  description,
-  status: "Pending Verification",
-  time: new Date().toLocaleTimeString(),
-  photo: photo ? URL.createObjectURL(photo) : undefined,
-  coordinates,
-  
-};
+    try {
+      await apiService.submitAlert({
+        type,
+        location,
+        severity,
+        description,
+        coordinates
+      });
 
-    onReportSubmit(newReport);
+    // We don't call onReportSubmit here because Supabase realtime will update the list
+    // onReportSubmit(newReport); // REMOVED
 
     setLocation("");
     setDescription("");
     setPhoto(null);
+    setCoordinates(null);
+    alert("Report successfully submitted and sent to Moderator queue.");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to submit report. Please try again.");
+    }
   };
 
   return (

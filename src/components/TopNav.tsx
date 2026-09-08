@@ -11,9 +11,11 @@ import {
 
 interface TopNavProps {
   isDisaster: boolean;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }
 
-export const TopNav: React.FC<TopNavProps> = ({ isDisaster }) => {
+export const TopNav: React.FC<TopNavProps> = ({ isDisaster, searchQuery, onSearchChange }) => {
   return (
     <header className="h-16 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between px-6">
 
@@ -80,6 +82,8 @@ export const TopNav: React.FC<TopNavProps> = ({ isDisaster }) => {
 
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search roads, vehicles..."
             className="bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-4 py-1.5 text-xs w-64
                        focus:outline-none focus:border-zinc-600
