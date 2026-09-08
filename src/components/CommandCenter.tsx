@@ -1,3 +1,5 @@
+
+import AnalyticsPage from '../pages/AnalyticsPage';
 import React, { useState } from "react";
 
 import { Sidebar } from "./Sidebar";
@@ -267,7 +269,10 @@ export const CommandCenter: React.FC = () => {
             CONTENT
         =================================================== */}
 
-        {activePage === "Reports" ? (
+       {activePage === 'Analytics' ? (
+  <AnalyticsPage />
+
+) : activePage === 'Reports' ? (
           <ReportsPage
             reports={reports}
             onReportSubmit={handleReportSubmit}

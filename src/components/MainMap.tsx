@@ -31,6 +31,25 @@ interface MainMapProps {
 /* =========================================================
    MAP FOCUS
    ========================================================= */
+const RouteAutoFit = ({ coordinates }: { coordinates?: [number, number][] }) => {
+  const map = useMap();
+
+  React.useEffect(() => {
+    if (!coordinates || coordinates.length === 0) {
+      return;
+    }
+
+    const bounds = coordinates.map(
+      (point) => [point[0], point[1]] as [number, number]
+    );
+
+    map.fitBounds(bounds, {
+      padding: [50, 50],
+    });
+  }, [coordinates, map]);
+
+  return null;
+};
 
 const MapFocus: React.FC<{ facility?: any }> = ({ facility }) => {
   const map = useMap();
@@ -135,6 +154,7 @@ export const MainMap: React.FC<MainMapProps> = ({
         minHeight: "500px",
       }}
     >
+      <RouteAutoFit coordinates={selectedRoute?.coordinates} />
       {/* ===================================================
           MAP FOCUS
          =================================================== */}
