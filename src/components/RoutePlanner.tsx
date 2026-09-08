@@ -1,23 +1,23 @@
 import React, { useState } from "react";
 
+interface RoutePlannerProps {
+  onRouteFound?: (route: any) => void;
+}
+
 const locations: Record<string, [number, number]> = {
   Guwahati: [26.1445, 91.7362],
   Shillong: [25.5788, 91.8933],
-  Jowai: [25.45, 92.20],
+  Jowai: [25.45, 92.2],
   Silchar: [24.8333, 92.7789],
   Imphal: [24.817, 93.9368],
   Aizawl: [23.7271, 92.7176],
 };
 
-interface RoutePlannerProps {
-  onRouteFound?: (route: any) => void;
-}
-
 const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
   const [source, setSource] = useState("");
   const [destination, setDestination] = useState("");
   const [routeFound, setRouteFound] = useState(false);
-  // State to hold the found route details for display
+  const [loading, setLoading] = useState(false);
   const [routeDetails, setRouteDetails] = useState<any>(null);
 
   const findRoute = async () => {
@@ -31,50 +31,100 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
       return;
     }
 
-    setRouteFound(false);
-    
     try {
+      setLoading(true);
+
       const srcCoord = locations[source];
       const dstCoord = locations[destination];
-      
-      // OSRM expects longitude,latitude
-      const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${srcCoord[1]},${srcCoord[0]};${dstCoord[1]},${dstCoord[0]}?overview=full&geometries=geojson`);
-      const data = await response.json();
-      
-      if (data.code === "Ok" && data.routes.length > 0) {
-        // OSRM returns coordinates as [lon, lat], Leaflet Polyline expects [lat, lon]
-        const routeCoords = data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
-        const distKm = Math.round(data.routes[0].distance / 1000);
-        const timeHrs = Math.floor(data.routes[0].duration / 3600);
-        const timeMins = Math.round((data.routes[0].duration % 3600) / 60);
-        
-        const calculatedRoute = {
-          source,
-          destination,
-          routeName: `NH-${Math.floor(Math.random() * 50) + 10}`,
-          distance: `${distKm} km`,
-          time: `${timeHrs > 0 ? timeHrs + 'h ' : ''}${timeMins}m`,
-          safetyScore: Math.floor(Math.random() * 20) + 75,
-          coordinates: routeCoords
-        };
-        
-        setRouteDetails(calculatedRoute);
-        setRouteFound(true);
-        if (onRouteFound) {
-          onRouteFound(calculatedRoute);
-        }
-      } else {
-        alert("Could not find a route between these locations.");
+
+      const url =
+        "https://router.project-osrm.org/route/v1/driving/" +
+        String(srcCoord[1]) +
+        "," +
+        String(srcCoord[0]) +
+        ";" +
+        String(dstCoord[1]) +
+        "," +
+        String(dstCoord[0]) +
+        "?overview=full&geometries=geojson";
+
+      console.log("ROUTE REQUEST:", url);
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error("Route request failed");
       }
-    } catch (err) {
-      console.error("Routing error:", err);
-      alert("Failed to calculate route. Please try again.");
+
+      const data = await response.json();
+
+      console.log("OSRM RESPONSE:", data);
+
+      if (
+        data.code !== "Ok" ||
+        !data.routes ||
+        data.routes.length === 0
+      ) {
+        alert("Could not find a route between these locations.");
+        return;
+      }
+
+      const route = data.routes[0];
+
+      const routeCoords = route.geometry.coordinates.map(
+        (coord: [number, number]) => {
+          return [coord[1], coord[0]];
+        }
+      );
+
+      const distanceKm = Math.round(route.distance / 1000);
+
+      const totalMinutes = Math.round(route.duration / 60);
+
+      const hours = Math.floor(totalMinutes / 60);
+
+      const minutes = totalMinutes % 60;
+
+      let time = "";
+
+      if (hours > 0) {
+        time =
+          String(hours) +
+          "h " +
+          String(minutes) +
+          "m";
+      } else {
+        time = String(minutes) + "m";
+      }
+
+      const calculatedRoute = {
+        source: source,
+        destination: destination,
+        routeName: source + " → " + destination,
+        distance: String(distanceKm) + " km",
+        time: time,
+        safetyScore: 85,
+        coordinates: routeCoords,
+      };
+
+      console.log("CALCULATED ROUTE:", calculatedRoute);
+
+      setRouteDetails(calculatedRoute);
+      setRouteFound(true);
+
+      if (onRouteFound) {
+        onRouteFound(calculatedRoute);
+      }
+    } catch (error) {
+      console.error("ROUTE PLANNER ERROR:", error);
+      alert("Unable to calculate route. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-white font-black text-lg">
@@ -92,9 +142,6 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-
-        {/* SOURCE */}
-
         <div>
           <label className="text-[10px] text-zinc-500 uppercase font-bold">
             Source
@@ -105,6 +152,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
             onChange={(e) => {
               setSource(e.target.value);
               setRouteFound(false);
+              setRouteDetails(null);
             }}
             className="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-lg p-3 text-sm text-white"
           >
@@ -118,8 +166,6 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
           </select>
         </div>
 
-        {/* DESTINATION */}
-
         <div>
           <label className="text-[10px] text-zinc-500 uppercase font-bold">
             Destination
@@ -130,6 +176,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
             onChange={(e) => {
               setDestination(e.target.value);
               setRouteFound(false);
+              setRouteDetails(null);
             }}
             className="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-lg p-3 text-sm text-white"
           >
@@ -142,25 +189,21 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
             ))}
           </select>
         </div>
-
       </div>
-
-      {/* BUTTON */}
 
       <button
         onClick={findRoute}
-        className="w-full mt-4 bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded-lg transition"
+        disabled={loading}
+        className="w-full mt-4 bg-orange-600 hover:bg-orange-500 disabled:bg-zinc-700 text-white font-bold py-3 rounded-lg transition"
       >
-        🔍 Find Safest Route
+        {loading
+          ? "⏳ Calculating Route..."
+          : "🔍 Find Safest Route"}
       </button>
-
-      {/* RESULT */}
 
       {routeFound && routeDetails && (
         <div className="mt-4 bg-zinc-950 border border-green-500/30 rounded-lg p-4">
-
           <div className="flex justify-between items-center">
-
             <div>
               <p className="text-xs text-zinc-500 uppercase">
                 Recommended Route
@@ -174,15 +217,14 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
             <span className="text-green-400 text-xs font-bold">
               ● SAFE
             </span>
-
           </div>
 
           <div className="grid grid-cols-3 gap-3 mt-4">
-
             <div>
               <p className="text-[9px] text-zinc-500 uppercase">
                 Risk
               </p>
+
               <p className="text-green-400 font-bold">
                 Low
               </p>
@@ -192,6 +234,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
               <p className="text-[9px] text-zinc-500 uppercase">
                 Distance
               </p>
+
               <p className="text-white font-bold">
                 {routeDetails.distance}
               </p>
@@ -201,20 +244,18 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteFound }) => {
               <p className="text-[9px] text-zinc-500 uppercase">
                 ETA
               </p>
+
               <p className="text-white font-bold">
                 {routeDetails.time}
               </p>
             </div>
-
           </div>
 
           <p className="text-[10px] text-zinc-500 mt-3">
-            🤖 Route selected using current road-risk information.
+            🤖 Route calculated using current road-network information.
           </p>
-
         </div>
       )}
-
     </div>
   );
 };

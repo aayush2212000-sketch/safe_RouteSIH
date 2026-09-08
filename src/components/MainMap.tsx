@@ -1,5 +1,8 @@
 import React from "react";
-import * as L from "leaflet";
+import L from "leaflet";
+
+import { incidentData } from "../data/incidentData";
+
 import {
   MapContainer,
   TileLayer,
@@ -7,137 +10,81 @@ import {
   Marker,
   Popup,
   CircleMarker,
+  useMap,
 } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
 
-import { roadData } from "../data/mockData";
+import { roadData, vehicleData } from "../data/mockData";
+import { predictedRisks } from "../data/riskData";
 import { getRiskExplanation } from "../utils/riskPrediction";
 
 interface MainMapProps {
   isDisaster: boolean;
   protocolActive: boolean;
   onRoadClick: (road: any) => void;
-  reports?: any[];
+  reports: any[];
   selectedRoute?: any;
-  aiPredictions?: any[];
-  vehicles?: any[];
+  selectedFacility?: any;
 }
 
-/* --------------------------------
-   Convert different coordinate
-   formats into Leaflet format
---------------------------------- */
-const getCoordinates = (coordinates: any): [number, number] | null => {
-  if (!coordinates) return null;
+/* =========================================================
+   MAP FOCUS
+   ========================================================= */
+const RouteAutoFit = ({ coordinates }: { coordinates?: [number, number][] }) => {
+  const map = useMap();
 
-  // Already [lat, lng]
-  if (
-    Array.isArray(coordinates) &&
-    coordinates.length >= 2 &&
-    typeof coordinates[0] === "number"
-  ) {
-    return [coordinates[0], coordinates[1]];
-  }
+  React.useEffect(() => {
+    if (!coordinates || coordinates.length === 0) {
+      return;
+    }
 
-  // { lat, lng }
-  if (
-    typeof coordinates === "object" &&
-    typeof coordinates.lat === "number" &&
-    typeof coordinates.lng === "number"
-  ) {
-    return [coordinates.lat, coordinates.lng];
-  }
-
-  // GeoJSON { coordinates: [lng, lat] }
-  if (
-    typeof coordinates === "object" &&
-    Array.isArray(coordinates.coordinates) &&
-    coordinates.coordinates.length >= 2
-  ) {
-    return [
-      Number(coordinates.coordinates[1]),
-      Number(coordinates.coordinates[0]),
-    ];
-  }
-
-  // EWKT:
-  // SRID=4326;POINT(lng lat)
-  if (typeof coordinates === "string") {
-    const pointMatch = coordinates.match(
-      /POINT\s*\(\s*([-0-9.]+)\s+([-0-9.]+)\s*\)/i
+    const bounds = coordinates.map(
+      (point) => [point[0], point[1]] as [number, number]
     );
 
-    if (pointMatch) {
-      const lng = Number(pointMatch[1]);
-      const lat = Number(pointMatch[2]);
-
-      if (!isNaN(lat) && !isNaN(lng)) {
-        return [lat, lng];
-      }
-    }
-
-    // Try JSON
-    try {
-      const parsed = JSON.parse(coordinates);
-      return getCoordinates(parsed);
-    } catch {
-      return null;
-    }
-  }
+    map.fitBounds(bounds, {
+      padding: [50, 50],
+    });
+  }, [coordinates, map]);
 
   return null;
 };
 
-/* --------------------------------
-   Fallback vehicle locations
+const MapFocus: React.FC<{ facility?: any }> = ({ facility }) => {
+  const map = useMap();
 
-   Your tracking_routes table currently
-   has id, cargo and status but no
-   coordinates.
---------------------------------- */
-const vehicleLocations: Record<string, [number, number]> = {
-  "V-101": [26.1445, 91.7362],
-  "V-102": [25.5788, 91.8933],
-  "V-103": [24.817, 92.797],
-  "V-104": [24.817, 93.9368],
-  "V-105": [23.7271, 92.7176],
+  React.useEffect(() => {
+    const target = facility?.position ?? facility?.location;
+
+    if (target) {
+      map.flyTo(target as [number, number], 14, {
+        duration: 1.5,
+      });
+    }
+  }, [facility, map]);
+
+  return null;
 };
-const vehicleIcon = L.divIcon({
-  className: "",
-  html: `
-    <div style="
-      width: 38px;
-      height: 38px;
-      background: #22c55e;
-      border: 3px solid white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      box-shadow: 0 0 15px rgba(34,197,94,0.9);
-    ">
-      🚚
-    </div>
-  `,
-  iconSize: [38, 38],
-  iconAnchor: [19, 19],
-});
+
+/* =========================================================
+   MAIN MAP
+   ========================================================= */
+
 export const MainMap: React.FC<MainMapProps> = ({
   isDisaster,
   protocolActive,
   onRoadClick,
-  reports = [],
+  reports,
   selectedRoute,
-  aiPredictions = [],
-  vehicles = [],
+  selectedFacility,
 }) => {
-  /* --------------------------------
+  /* =======================================================
      ROAD COLOR
-  --------------------------------- */
+     ======================================================= */
+
   const getRoadColor = (road: any) => {
-    const predictedRoad = aiPredictions.find(
+    const predictedRoad = predictedRisks.find(
       (item) => item.road === road.id
     );
 
@@ -145,35 +92,95 @@ export const MainMap: React.FC<MainMapProps> = ({
       return "#22c55e";
     }
 
-    const level = predictedRoad.prediction?.level;
+    const level = predictedRoad.prediction.level;
 
-    if (level === "CRITICAL") return "#ef4444";
-    if (level === "HIGH") return "#f97316";
-    if (level === "MEDIUM") return "#f59e0b";
+    if (level === "CRITICAL") {
+      return "#ef4444";
+    }
+
+    if (level === "HIGH") {
+      return "#f97316";
+    }
+
+    if (level === "MEDIUM") {
+      return "#f59e0b";
+    }
 
     return "#22c55e";
   };
 
+  /* =======================================================
+     EMERGENCY FACILITIES
+     ======================================================= */
+
+  const emergencyFacilities = [
+    {
+      id: "F-01",
+      name: "Jowai Civil Hospital",
+      type: "Hospital",
+      position: [25.45, 92.20] as [number, number],
+    },
+    {
+      id: "F-02",
+      name: "Jowai Fuel Station",
+      type: "Fuel Station",
+      position: [25.48, 92.18] as [number, number],
+    },
+    {
+      id: "F-03",
+      name: "Jowai Police Station",
+      type: "Police Station",
+      position: [25.44, 92.19] as [number, number],
+    },
+    {
+      id: "F-04",
+      name: "Emergency Relief Shelter",
+      type: "Shelter",
+      position: [25.50, 92.23] as [number, number],
+    },
+  ];
+
+  /* =======================================================
+     RENDER
+     ======================================================= */
+
   return (
     <MapContainer
-      center={[25.8, 93.5]}
-      zoom={7}
+      center={[25.45, 92.20]}
+      zoom={10}
       style={{
         height: "100%",
         width: "100%",
         minHeight: "500px",
       }}
     >
-      {/* =========================
+      <RouteAutoFit coordinates={selectedRoute?.coordinates} />
+      {/* ===================================================
+          MAP FOCUS
+         =================================================== */}
+
+      <MapFocus facility={selectedFacility} />
+
+      {/* ===================================================
           MAP LEGEND
-      ========================= */}
+         =================================================== */}
 
       <div
-        className="absolute bottom-5 right-5 z-[1000]
-                   bg-zinc-950/90 backdrop-blur-md
-                   border border-zinc-700/70
-                   rounded-xl px-4 py-3
-                   shadow-xl text-white"
+        className="
+          absolute
+          bottom-5
+          right-5
+          z-[1000]
+          bg-zinc-950/90
+          backdrop-blur-md
+          border
+          border-zinc-700/70
+          rounded-xl
+          px-4
+          py-3
+          shadow-xl
+          text-white
+        "
       >
         <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-3">
           Road Risk
@@ -202,18 +209,18 @@ export const MainMap: React.FC<MainMapProps> = ({
         </div>
       </div>
 
-      {/* =========================
-          MAP
-      ========================= */}
+      {/* ===================================================
+          MAP BACKGROUND
+         =================================================== */}
 
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution="&copy; OpenStreetMap contributors"
       />
 
-      {/* =========================
+      {/* ===================================================
           NER HIGHWAYS
-      ========================= */}
+         =================================================== */}
 
       {roadData.map((road) => (
         <Polyline
@@ -226,6 +233,7 @@ export const MainMap: React.FC<MainMapProps> = ({
                 : isDisaster
                 ? "#ef4444"
                 : getRoadColor(road),
+
             weight: 8,
             opacity: 1,
           }}
@@ -251,7 +259,7 @@ export const MainMap: React.FC<MainMapProps> = ({
             <br />
             <br />
 
-            {aiPredictions
+            {predictedRisks
               .filter((item) => item.road === road.id)
               .map((item) => {
                 const reasons = getRiskExplanation({
@@ -268,11 +276,11 @@ export const MainMap: React.FC<MainMapProps> = ({
 
                     <br />
 
-                    Risk Score: {item.prediction?.score}/100
+                    Risk Score: {item.prediction.score}/100
 
                     <br />
 
-                    Predicted Level: {item.prediction?.level}
+                    Predicted Level: {item.prediction.level}
 
                     <br />
                     <br />
@@ -293,11 +301,11 @@ export const MainMap: React.FC<MainMapProps> = ({
 
                     <br />
 
-                    {item.prediction?.level === "CRITICAL"
+                    {item.prediction.level === "CRITICAL"
                       ? "⚠️ Avoid route and activate emergency rerouting"
-                      : item.prediction?.level === "HIGH"
+                      : item.prediction.level === "HIGH"
                       ? "⚠️ Monitor route and prepare alternate path"
-                      : item.prediction?.level === "MEDIUM"
+                      : item.prediction.level === "MEDIUM"
                       ? "🟡 Continue monitoring conditions"
                       : "✅ Route operating normally"}
                   </React.Fragment>
@@ -307,11 +315,11 @@ export const MainMap: React.FC<MainMapProps> = ({
         </Polyline>
       ))}
 
-      {/* =========================
+      {/* ===================================================
           SMART ROUTE
-      ========================= */}
+         =================================================== */}
 
-      {selectedRoute && selectedRoute.coordinates && (
+      {selectedRoute && (
         <Polyline
           positions={selectedRoute.coordinates as [number, number][]}
           pathOptions={{
@@ -353,15 +361,11 @@ export const MainMap: React.FC<MainMapProps> = ({
         </Polyline>
       )}
 
-      {/* =========================
-          DATABASE INCIDENTS
-      ========================= */}
+      {/* ===================================================
+          INCIDENTS
+         =================================================== */}
 
-      {reports.map((incident) => {
-        const coordinates = getCoordinates(incident.coordinates);
-
-        if (!coordinates) return null;
-
+      {incidentData.map((incident) => {
         const incidentColor =
           incident.severity === "Critical"
             ? "#ef4444"
@@ -373,8 +377,8 @@ export const MainMap: React.FC<MainMapProps> = ({
 
         return (
           <CircleMarker
-            key={`incident-circle-${incident.id}`}
-            center={coordinates}
+            key={incident.id}
+            center={incident.coordinates}
             radius={9}
             pathOptions={{
               color: incidentColor,
@@ -416,9 +420,9 @@ export const MainMap: React.FC<MainMapProps> = ({
         );
       })}
 
-      {/* =========================
+      {/* ===================================================
           AI REROUTE
-      ========================= */}
+         =================================================== */}
 
       {protocolActive && (
         <Polyline
@@ -426,7 +430,7 @@ export const MainMap: React.FC<MainMapProps> = ({
             [26.1, 91.8],
             [25.8, 91.8],
             [25.57, 91.88],
-            [24.3, 91.83],
+            [24.30, 91.83],
           ]}
           pathOptions={{
             color: "#38bdf8",
@@ -437,89 +441,165 @@ export const MainMap: React.FC<MainMapProps> = ({
         />
       )}
 
-     {/* =========================
-    VEHICLES
-========================= */}
+      {/* ===================================================
+          EMERGENCY FACILITIES
+         =================================================== */}
 
-{vehicles.map((vehicle, index) => {
-  console.log("VEHICLE FROM DATABASE:", vehicle);
+      {emergencyFacilities.map((facility) => {
+        const type = facility.type.toLowerCase();
 
-  const vehicleId = String(
-    vehicle.id ??
-      vehicle.vehicle_id ??
-      vehicle.vehicleId ??
-      `V-${101 + index}`
-  );
+        let bgColor = "#2563eb";
 
-  // Try every possible location field
-  const vehiclePosition =
-    getCoordinates(vehicle.location) ||
-    getCoordinates(vehicle.coordinates) ||
-    getCoordinates(vehicle.current_location) ||
-    getCoordinates(vehicle.currentLocation) ||
-    (vehicle.latitude != null && vehicle.longitude != null
-      ? [Number(vehicle.latitude), Number(vehicle.longitude)] as [number, number]
-      : null) ||
-    vehicleLocations[vehicleId] ||
-    vehicleLocations[`V-${101 + index}`];
+        if (type.includes("hospital")) {
+          bgColor = "#dc2626";
+        } else if (type.includes("fuel")) {
+          bgColor = "#f59e0b";
+        } else if (type.includes("police")) {
+          bgColor = "#2563eb";
+        } else if (type.includes("shelter")) {
+          bgColor = "#16a34a";
+        }
 
-  console.log("VEHICLE ID:", vehicleId);
-  console.log("VEHICLE POSITION:", vehiclePosition);
+        const customIcon = L.divIcon({
+          className: "",
+          html: `
+            <div style="
+              width: 42px;
+              height: 42px;
+              background: ${bgColor};
+              border: 3px solid white;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+              font-size: 20px;
+            ">
+              ${
+                type.includes("hospital")
+                  ? "✚"
+                  : type.includes("fuel")
+                  ? "⛽"
+                  : type.includes("police")
+                  ? "🛡"
+                  : "⌂"
+              }
+            </div>
+          `,
+          iconSize: [42, 42],
+          iconAnchor: [21, 21],
+          popupAnchor: [0, -21],
+        });
 
-  if (!vehiclePosition) {
-    console.warn("NO POSITION FOR VEHICLE:", vehicle);
-    return null;
-  }
+        return (
+          <Marker
+            key={facility.id}
+            position={facility.position}
+            icon={customIcon}
+          >
+            <Popup>
+              <div style={{ minWidth: "190px" }}>
+                <strong style={{ fontSize: "15px" }}>
+                  🚨 {facility.name}
+                </strong>
 
-  const displayPosition =
-    protocolActive && vehicleId === "V-101"
-      ? ([25.57, 91.88] as [number, number])
-      : vehiclePosition;
+                <br />
+                <br />
 
-  return (
-    <Marker
-      key={`vehicle-${vehicleId}-${index}`}
-      position={displayPosition}
-      icon={vehicleIcon}
-    >
-      <Popup>
-        <strong>🚚 {vehicleId}</strong>
-        <br />
-        Cargo: {vehicle.cargo ?? "N/A"}
-        <br />
-        Status:
-        {" "}
-        {protocolActive && vehicleId === "V-101"
-          ? "🔄 REROUTED"
-          : vehicle.status ?? "Unknown"}
+                <strong>Type:</strong> {facility.type}
 
-        {protocolActive && vehicleId === "V-101" && (
-          <>
-            <br />
-            <br />
-            🤖 AI Route: NH-44
-            <br />
-            ⚡ Priority: HIGH
-          </>
-        )}
-      </Popup>
-    </Marker>
-  );
-})}
+                <br />
 
-      {/* =========================
-          CITIZEN INCIDENT MARKERS
-      ========================= */}
+                <strong>ID:</strong> {facility.id}
+
+                <br />
+                <br />
+
+                <span
+                  style={{
+                    color: "#16a34a",
+                    fontWeight: "bold",
+                  }}
+                >
+                  ● AVAILABLE
+                </span>
+
+                <br />
+
+                Jowai Emergency Zone
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+
+      {/* ===================================================
+          VEHICLES
+         =================================================== */}
+
+      {vehicleData.map((vehicle) => {
+        const vehiclePosition =
+          isDisaster && vehicle.id === "V-101"
+            ? ([25.57, 91.88] as [number, number])
+            : (vehicle.location as [number, number]);
+
+        return (
+          <Marker
+            key={vehicle.id}
+            position={
+              protocolActive && vehicle.id === "V-101"
+                ? ([25.57, 91.88] as [number, number])
+                : vehiclePosition
+            }
+          >
+            <Popup>
+              <strong>🚚 {vehicle.id}</strong>
+
+              <br />
+
+              Cargo: {vehicle.cargo}
+
+              <br />
+
+              Status:{" "}
+              {protocolActive && vehicle.id === "V-101"
+                ? "🔄 REROUTED"
+                : vehicle.status}
+
+              <br />
+
+              {protocolActive && vehicle.id === "V-101" && (
+                <>
+                  <br />
+
+                  🤖 AI Route: NH-44
+
+                  <br />
+
+                  ⚡ Priority: HIGH
+                </>
+              )}
+            </Popup>
+          </Marker>
+        );
+      })}
+
+      {/* ===================================================
+          CITIZEN INCIDENT REPORTS
+         =================================================== */}
 
       {reports.map((report) => {
-        const coordinates = getCoordinates(report.coordinates);
-
-        if (!coordinates) return null;
+        if (!report.coordinates) {
+          return null;
+        }
 
         return (
           <Marker
             key={`incident-${report.id}`}
-            position={coordinates}
+            position={[
+              report.coordinates.lat,
+              report.coordinates.lng,
+            ]}
           >
             <Popup>
               <strong>🚨 CITIZEN INCIDENT</strong>
