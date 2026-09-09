@@ -10,7 +10,7 @@ import {
   Brain,
   BarChart3,
   Settings,
-  ShieldAlert,
+  
 } from 'lucide-react';
 //import galeLogo from '../assets/gale-logo.svg';
 

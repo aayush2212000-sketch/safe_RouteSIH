@@ -11,7 +11,7 @@ import { AIActionRecommendation } from "./AIActionRecommendation";
 import { DemoControls } from "./DemoControls";
 import { LiveLogistics } from "./LiveLogistics";
 import RiskPrediction from "./RiskPrediction";
-import CitizenReport from "./CitizenReport";
+//import CitizenReport from "./CitizenReport";
 import IncidentFeed from "./IncidentFeed";
 import ReportsPage from "./ReportsPage";
 import RoutePlanner from "./RoutePlanner";
@@ -372,7 +372,7 @@ export const CommandCenter: React.FC = () => {
               ================================================= */}
 
               <LiveLogistics
-                protocolActive={protocolActive}
+               // protocolActive={protocolActive}
               />
 
               {/* =================================================

@@ -4,7 +4,7 @@ import IncidentFeed from "./IncidentFeed";
 
 interface ReportsPageProps {
   reports: any[];
-  onReportSubmit?: () => void;
+  onReportSubmit?: (report: any) => void;
   onStatusChange: (id: number, status: string) => void;
 }
 

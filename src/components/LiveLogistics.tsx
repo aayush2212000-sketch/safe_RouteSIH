@@ -9,12 +9,12 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 interface LiveLogisticsProps {
-  protocolActive: boolean;
+ 
   vehicles?: any[];
 }
 
 export const LiveLogistics: React.FC<LiveLogisticsProps> = ({
-  protocolActive,
+ 
   vehicles = [],
 }) => {
   const navigate = useNavigate();

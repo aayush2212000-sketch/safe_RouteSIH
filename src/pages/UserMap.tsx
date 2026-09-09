@@ -7,7 +7,7 @@ import { roadData } from '../data/mockData';
 import { useGaleData } from '../hooks/useGaleData';
 
 export const UserMap: React.FC = () => {
-  const { alerts, vehicles, predictions, loading } = useGaleData();
+  const { alerts, loading } = useGaleData();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
@@ -78,8 +78,8 @@ export const UserMap: React.FC = () => {
                 onRoadClick={() => {}}
                 reports={alerts}
                 selectedRoute={selectedRoute}
-                aiPredictions={predictions?.aiRoutes}
-                vehicles={vehicles}
+               // aiPredictions={predictions?.aiRoutes}
+               // vehicles={vehicles}
               />
             )}
 
