@@ -1,5 +1,8 @@
 import React from "react";
 import L from "leaflet";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 import { incidentData } from "../data/incidentData";
 
@@ -14,6 +17,11 @@ import {
 } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 import { roadData, vehicleData } from "../data/mockData";
 import { predictedRisks } from "../data/riskData";
