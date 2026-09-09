@@ -17,11 +17,11 @@ import {
 } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
-L.Icon.Default.prototype.options.iconUrl = markerIcon;
-L.Icon.Default.prototype.options.iconRetinaUrl = markerIcon2x;
-L.Icon.Default.prototype.options.shadowUrl = markerShadow;
-
-L.Icon.Default.imagePath = "";
+L.Icon.Default.mergeOptions({
+  iconUrl: "/leaflet/marker-icon.png",
+  iconRetinaUrl: "/leaflet/marker-icon-2x.png",
+  shadowUrl: "/leaflet/marker-shadow.png",
+});
 
 import { roadData, vehicleData } from "../data/mockData";
 import { predictedRisks } from "../data/riskData";
