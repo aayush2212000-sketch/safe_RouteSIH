@@ -6,6 +6,7 @@ import { CommandCenter } from './components/CommandCenter';
 import { UserMap } from './pages/UserMap';
 import { ModeratorFeed } from './pages/ModeratorFeed';
 
+
 function App() {
   console.log("🔥 APP LOADED");
 
@@ -17,6 +18,7 @@ function App() {
   path="/fleet-vehicles"
   element={<FleetVehiclesPage />}
 />
+
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
         

@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 import {
   LayoutDashboard,
@@ -10,6 +12,7 @@ import {
   Settings,
   ShieldAlert,
 } from 'lucide-react';
+//import galeLogo from '../assets/gale-logo.svg';
 
 interface SidebarProps {
   activePage: string;
@@ -34,17 +37,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className="w-64 h-full bg-zinc-950 border-r border-zinc-800 flex flex-col p-4">
 
-      {/* LOGO */}
-      <div className="flex items-center gap-3 px-2 mb-8">
-        <div className="bg-orange-600 p-2 rounded-lg">
-          <ShieldAlert size={20} className="text-white" />
-        </div>
-
-        <span className="font-black text-xl tracking-tighter text-white">
-          G.A.L.E
-        </span>
-      </div>
-
+      
+{/* LOGO */}
+<div className="flex items-center justify-center px-4 py-5">
+ <img
+  src="/gale-logo.png"
+  alt="GALE"
+  className="h-24 w-full object-contain"
+/>
+</div>
       {/* NAVIGATION */}
       <nav className="flex-1 space-y-1">
 
